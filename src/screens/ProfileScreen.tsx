@@ -7,34 +7,37 @@ import {
   SafeAreaView,
   Alert,
   ActivityIndicator,
+  Modal,
+  TextInput,
 } from 'react-native';
 import auth from '@react-native-firebase/auth';
 import database from '@react-native-firebase/database';
 import { signOutUser } from '../api/authService';
 
-// This type defines the structure of your user data in the Realtime Database
 type UserProfile = {
   email: string;
   trainerName: string;
   createdAt: string;
   badges: string[];
-  discoveredPokemon: { [key: string]: any }; // Object to hold discovered Pokemon
+  discoveredPokemon: { [key: string]: any };
 };
 
 const ProfileScreen = () => {
   const [loading, setLoading] = useState(true);
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
+  
+  // NEW: State for handling the Edit Modal
+  const [modalVisible, setModalVisible] = useState(false);
+  const [newName, setNewName] = useState('');
 
-  const currentUser = auth().currentUser; // Get the currently authenticated user
+  const currentUser = auth().currentUser;
 
   useEffect(() => {
     if (!currentUser) {
-      // This should technically not happen if RootNavigator is working
       setLoading(false);
       return;
     }
 
-    // Set up a listener to the user's profile in the Realtime Database
     const userRef = database().ref(`/users/${currentUser.uid}`);
 
     const onValueChange = userRef.on('value', snapshot => {
@@ -43,17 +46,44 @@ const ProfileScreen = () => {
       setLoading(false);
     });
 
-    // Stop listening for updates when the component unmounts
     return () => userRef.off('value', onValueChange);
-  }, [currentUser]); // Re-run if the user changes
+  }, [currentUser]);
 
   const handleSignOut = async () => {
     try {
       await signOutUser();
-      // RootNavigator will automatically handle the screen change
     } catch (error) {
       console.error(error);
       Alert.alert('Error', 'Failed to sign out.');
+    }
+  };
+
+  // NEW: Function to open modal and pre-fill current name
+  const openEditModal = () => {
+    if (userProfile?.trainerName) {
+      setNewName(userProfile.trainerName);
+    }
+    setModalVisible(true);
+  };
+
+  // NEW: Function to update Firebase
+  const handleUpdateName = async () => {
+    if (!newName.trim()) {
+      Alert.alert('Error', 'Trainer name cannot be empty');
+      return;
+    }
+
+    if (!currentUser) return;
+
+    try {
+      await database().ref(`/users/${currentUser.uid}`).update({
+        trainerName: newName.trim(),
+      });
+      setModalVisible(false);
+      Alert.alert('Success', 'Trainer Card updated!');
+    } catch (error) {
+      console.error(error);
+      Alert.alert('Error', 'Could not update name.');
     }
   };
 
@@ -65,7 +95,6 @@ const ProfileScreen = () => {
     );
   }
 
-  // Get a count of discovered Pokemon
   const discoveredCount = userProfile?.discoveredPokemon
     ? Object.keys(userProfile.discoveredPokemon).length
     : 0;
@@ -76,7 +105,13 @@ const ProfileScreen = () => {
         <Text style={styles.title}>My Profile</Text>
 
         <View style={styles.infoBox}>
-          <Text style={styles.infoLabel}>Trainer Name</Text>
+          <View style={styles.row}>
+            <Text style={styles.infoLabel}>Trainer Name</Text>
+            {/* NEW: Edit Button */}
+            <TouchableOpacity onPress={openEditModal}>
+              <Text style={styles.editLink}>Edit</Text>
+            </TouchableOpacity>
+          </View>
           <Text style={styles.infoValue}>
             {userProfile?.trainerName || 'Trainer'}
           </Text>
@@ -92,16 +127,54 @@ const ProfileScreen = () => {
           <Text style={styles.infoValue}>{discoveredCount}</Text>
         </View>
 
-        {/* This is where you would map out badges or the photo gallery */}
         <Text style={styles.todo}>[Captures Gallery grid here]</Text>
         <Text style={styles.todo}>[Badges list here]</Text>
-
 
         <TouchableOpacity
           style={styles.signOutButton}
           onPress={handleSignOut}>
           <Text style={styles.signOutButtonText}>Sign Out</Text>
         </TouchableOpacity>
+
+        {/* NEW: Edit Name Modal */}
+        <Modal
+          animationType="slide"
+          transparent={true}
+          visible={modalVisible}
+          onRequestClose={() => setModalVisible(false)}
+        >
+          <View style={styles.modalOverlay}>
+            <View style={styles.modalContent}>
+              <Text style={styles.modalTitle}>Edit Trainer Name</Text>
+              
+              <TextInput 
+                style={styles.input}
+                value={newName}
+                onChangeText={setNewName}
+                placeholder="Enter new name"
+                placeholderTextColor="#999"
+                autoFocus
+              />
+
+              <View style={styles.modalButtons}>
+                <TouchableOpacity 
+                  style={[styles.modalBtn, styles.cancelBtn]}
+                  onPress={() => setModalVisible(false)}
+                >
+                  <Text style={styles.btnText}>Cancel</Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity 
+                  style={[styles.modalBtn, styles.saveBtn]}
+                  onPress={handleUpdateName}
+                >
+                  <Text style={styles.btnText}>Save</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          </View>
+        </Modal>
+
       </View>
     </SafeAreaView>
   );
@@ -110,7 +183,7 @@ const ProfileScreen = () => {
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: '#f5f5f5',
+    backgroundColor: '#373737ff',
   },
   container: {
     flex: 1,
@@ -124,12 +197,12 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 32,
     fontWeight: 'bold',
-    color: '#333',
+    color: '#ffffffff',
     marginBottom: 30,
     textAlign: 'center',
   },
   infoBox: {
-    backgroundColor: '#fff',
+    backgroundColor: '#888',
     borderRadius: 8,
     padding: 15,
     marginBottom: 15,
@@ -139,13 +212,24 @@ const styles = StyleSheet.create({
     shadowRadius: 2,
     elevation: 3,
   },
+  row: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
   infoLabel: {
     fontSize: 14,
-    color: '#888',
+    color: '#e0e0e0',
+  },
+  // NEW STYLES
+  editLink: {
+    color: '#81b0ff', // A nice link blue/purple
+    fontWeight: 'bold',
+    fontSize: 14,
   },
   infoValue: {
     fontSize: 18,
-    color: '#333',
+    color: '#ffffffff',
     fontWeight: '600',
     marginTop: 4,
   },
@@ -156,8 +240,8 @@ const styles = StyleSheet.create({
     marginVertical: 10,
   },
   signOutButton: {
-    marginTop: 'auto', // Pushes the button to the bottom
-    backgroundColor: '#e63946', // Pokemon Red
+    marginTop: 'auto', 
+    backgroundColor: '#e63946', 
     padding: 15,
     borderRadius: 8,
     alignItems: 'center',
@@ -165,6 +249,57 @@ const styles = StyleSheet.create({
   signOutButtonText: {
     color: '#fff',
     fontSize: 16,
+    fontWeight: 'bold',
+  },
+  // MODAL STYLES
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  modalContent: {
+    width: '80%',
+    backgroundColor: '#fff',
+    borderRadius: 15,
+    padding: 20,
+    elevation: 5,
+  },
+  modalTitle: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    marginBottom: 15,
+    color: '#333',
+    textAlign: 'center',
+  },
+  input: {
+    borderWidth: 1,
+    borderColor: '#ccc',
+    borderRadius: 8,
+    padding: 10,
+    fontSize: 16,
+    marginBottom: 20,
+    color: '#333',
+  },
+  modalButtons: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+  },
+  modalBtn: {
+    flex: 1,
+    padding: 10,
+    borderRadius: 8,
+    alignItems: 'center',
+    marginHorizontal: 5,
+  },
+  cancelBtn: {
+    backgroundColor: '#999',
+  },
+  saveBtn: {
+    backgroundColor: '#e63946',
+  },
+  btnText: {
+    color: '#fff',
     fontWeight: 'bold',
   },
 });
