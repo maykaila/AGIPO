@@ -75,7 +75,7 @@ export default function PokedexScreen({ navigation }: any) {
   if (loading) {
     return (
       <View style={[styles.container, styles.center]}>
-        <ActivityIndicator size="large" color="#DC0A2D" />
+        <ActivityIndicator size="large" color="#8B2323" />
         <Text style={{color: 'white', marginTop: 10}}>Loading Pokedex...</Text>
       </View>
     );
@@ -176,7 +176,7 @@ const styles = StyleSheet.create({
   },
   // --- HEADER STYLES ---
   header: {
-    backgroundColor: '#DC0A2D', 
+    backgroundColor: '#8B2323', 
     paddingHorizontal: 16,
     paddingBottom: 16,
     paddingTop: 20, 
@@ -223,7 +223,7 @@ const styles = StyleSheet.create({
   sortButtonText: {
     fontSize: 20,
     fontWeight: 'bold',
-    color: '#DC0A2D',
+    color: '#8B2323',
   },
   
   // --- LIST STYLES ---
@@ -299,19 +299,19 @@ const styles = StyleSheet.create({
     height: 20,
     borderRadius: 10,
     borderWidth: 2,
-    borderColor: '#DC0A2D',
+    borderColor: '#8B2323',
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: 10,
   },
   radioSelected: {
-    borderColor: '#DC0A2D',
+    borderColor: '#8B2323',
   },
   radioInner: {
     width: 10,
     height: 10,
     borderRadius: 5,
-    backgroundColor: '#DC0A2D',
+    backgroundColor: '#8B2323',
   },
   radioLabel: {
     fontSize: 14,
