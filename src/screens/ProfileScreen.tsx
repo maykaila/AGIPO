@@ -279,7 +279,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#333333',
   },
   headerContainer: {
-    backgroundColor: '#D03844',
+    backgroundColor: '#8B2323',
     // --- 4. RESPONSIVE HEADER FIX ---
     // Push content down based on StatusBar height
     paddingTop: Platform.OS === 'android' ? (StatusBar.currentHeight || 0) + 20 : 60,
@@ -293,7 +293,7 @@ const styles = StyleSheet.create({
   menuIcon: {
     position: 'absolute',
     // Adjust top position to account for the new padding
-    top: Platform.OS === 'android' ? (StatusBar.currentHeight || 0) + 20 : 60,
+    top: 20,//Platform.OS === 'android' ? (StatusBar.currentHeight || 0) + 20 : 60,
     right: 20,
     zIndex: 10, 
     padding: 5, 

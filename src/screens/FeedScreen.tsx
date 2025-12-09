@@ -301,7 +301,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     borderBottomWidth: 1,
     borderBottomColor: '#444',
-    paddingTop: Platform.OS === 'android' ? (StatusBar.currentHeight || 0) + 15 : 50,
+    paddingTop: 15,//Platform.OS === 'android' ? (StatusBar.currentHeight || 0) + 15 : 50,
     paddingBottom: 15,
   },
   headerTitle: {
