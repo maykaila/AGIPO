@@ -35,7 +35,8 @@ type FeedPost = {
   caption: string;
   timestamp: number;
   likes: number;
-  comments?: { [key: string]: Comment }; // Dictionary of comments
+  user_likes?: { [key: string]: boolean }; // NEW: Track who liked the post
+  comments?: { [key: string]: Comment }; 
 };
 
 type MyPokemon = {
@@ -48,18 +49,15 @@ const FeedScreen = () => {
   const [posts, setPosts] = useState<FeedPost[]>([]);
   const [loading, setLoading] = useState(true);
   
-  // --- States for Creating Post ---
   const [createModalVisible, setCreateModalVisible] = useState(false);
   const [myPokemonList, setMyPokemonList] = useState<MyPokemon[]>([]);
   const [selectedPokemon, setSelectedPokemon] = useState<MyPokemon | null>(null);
   const [caption, setCaption] = useState('');
   const [posting, setPosting] = useState(false);
 
-  // --- States for Comments ---
   const [commentModalVisible, setCommentModalVisible] = useState(false);
   const [activePostId, setActivePostId] = useState<string | null>(null);
   const [newComment, setNewComment] = useState('');
-  // We derive the active post's comments from the main 'posts' state
 
   const currentUser = auth().currentUser;
 
@@ -85,7 +83,6 @@ const FeedScreen = () => {
     return () => feedRef.off('value', onValueChange);
   }, []);
 
-  // --- LOGIC: CREATE POST ---
   const fetchMyPokemon = async () => {
     if (!currentUser) return;
     try {
@@ -136,15 +133,32 @@ const FeedScreen = () => {
     setPosting(false);
   };
 
-  // --- LOGIC: LIKE POST ---
+  // --- UPDATED LOGIC: TOGGLE LIKE ---
   const handleLike = (postId: string) => {
-    const postRef = database().ref(`/public_feed/${postId}/likes`);
-    postRef.transaction((currentLikes) => {
-      return (currentLikes || 0) + 1;
+    if (!currentUser) return;
+
+    const postRef = database().ref(`/public_feed/${postId}`);
+    
+    // We use a transaction to safely toggle the like status
+    postRef.transaction((post) => {
+      if (post) {
+        if (post.user_likes && post.user_likes[currentUser.uid]) {
+          // User already liked -> UNLIKE
+          post.likes = (post.likes || 1) - 1; // Decrease count
+          post.user_likes[currentUser.uid] = null; // Remove user from list
+        } else {
+          // User hasn't liked -> LIKE
+          post.likes = (post.likes || 0) + 1; // Increase count
+          if (!post.user_likes) {
+            post.user_likes = {};
+          }
+          post.user_likes[currentUser.uid] = true; // Add user to list
+        }
+      }
+      return post;
     });
   };
 
-  // --- LOGIC: COMMENTING ---
   const openCommentModal = (post: FeedPost) => {
     setActivePostId(post.id);
     setCommentModalVisible(true);
@@ -169,7 +183,6 @@ const FeedScreen = () => {
     }
   };
 
-  // --- LOGIC: SHARE ---
   const onShare = async (post: FeedPost) => {
     const shareOptions = {
       title: 'PokeExplorer Discovery',
@@ -183,13 +196,14 @@ const FeedScreen = () => {
     }
   };
 
-  // --- RENDER HELPERS ---
   const renderItem = ({ item }: { item: FeedPost }) => {
     const commentCount = item.comments ? Object.keys(item.comments).length : 0;
+    
+    // Check if current user has liked this specific post
+    const isLiked = item.user_likes && item.user_likes[currentUser?.uid || ''];
 
     return (
       <View style={styles.card}>
-        {/* Header */}
         <View style={styles.cardHeader}>
           <View style={styles.avatarPlaceholder} />
           <View>
@@ -200,34 +214,36 @@ const FeedScreen = () => {
           </View>
         </View>
 
-        {/* Image Area */}
         <View style={styles.imageWrapper}>
             <Image source={{ uri: item.pokemonImage }} style={styles.cardImage} resizeMode="contain" />
         </View>
 
-        {/* Action Bar */}
         <View style={styles.cardActions}>
           <View style={styles.leftActions}>
-            {/* LIKE BUTTON */}
+            
+            {/* LIKE BUTTON - Now Visualizes State */}
             <TouchableOpacity style={styles.actionBtn} onPress={() => handleLike(item.id)}>
-              <MaterialCommunityIcons name="heart-outline" size={24} color="#e63946" />
-              <Text style={styles.actionText}>{item.likes || 0}</Text>
+              <MaterialCommunityIcons 
+                name={isLiked ? "heart" : "heart-outline"} // Toggle Icon
+                size={24} 
+                color={isLiked ? "#e63946" : "#ffffff"}   // Toggle Color
+              />
+              <Text style={[styles.actionText, isLiked && { color: '#e63946' }]}>
+                {item.likes || 0}
+              </Text>
             </TouchableOpacity>
             
-            {/* COMMENT BUTTON */}
             <TouchableOpacity style={styles.actionBtn} onPress={() => openCommentModal(item)}>
               <MaterialCommunityIcons name="comment-text-outline" size={24} color="#fff" />
               <Text style={styles.actionText}>{commentCount}</Text>
             </TouchableOpacity>
 
-            {/* SHARE BUTTON */}
             <TouchableOpacity style={styles.actionBtn} onPress={() => onShare(item)}>
               <MaterialCommunityIcons name="share-variant-outline" size={24} color="#fff" />
             </TouchableOpacity>
           </View>
         </View>
 
-        {/* Caption */}
         <View style={styles.cardContent}>
           <Text style={styles.postText}>
             <Text style={styles.boldText}>{item.pokemonName} </Text>
@@ -238,7 +254,6 @@ const FeedScreen = () => {
     );
   };
 
-  // Find active post object for the comment modal
   const activePost = posts.find(p => p.id === activePostId);
   const commentsArray = activePost?.comments ? Object.values(activePost.comments) : [];
 
@@ -262,7 +277,6 @@ const FeedScreen = () => {
         />
       )}
 
-      {/* FAB (Add Post) */}
       <TouchableOpacity style={styles.fab} onPress={openCreateModal}>
         <MaterialCommunityIcons name="plus" size={30} color="#fff" />
       </TouchableOpacity>
@@ -351,7 +365,6 @@ const FeedScreen = () => {
                 )}
             </View>
 
-            {/* Input Area */}
             <View>
                 <TextInput
                     style={styles.commentInput}
@@ -393,7 +406,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     borderBottomWidth: 1,
     borderBottomColor: '#444',
-    paddingTop: 15,
+    paddingTop: 10,
     paddingBottom: 15,
   },
   headerTitle: {
@@ -412,7 +425,6 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontFamily: 'PokemonClassic',
   },
-  // --- CARD ---
   card: {
     backgroundColor: '#444',
     marginBottom: 20,
@@ -450,7 +462,7 @@ const styles = StyleSheet.create({
     fontSize: 10,
   },
   imageWrapper: {
-    backgroundColor: '#555', // darker background for image to pop
+    backgroundColor: '#555',
     paddingVertical: 10,
   },
   cardImage: {
@@ -490,11 +502,9 @@ const styles = StyleSheet.create({
   },
   boldText: {
     fontFamily: 'PokemonClassic',
-    color: '#e63946', // Highlight pokemon name in red
+    color: '#e63946',
     fontSize: 12,
   },
-  
-  // --- MODALS & INPUTS ---
   modalOverlay: {
     flex: 1,
     backgroundColor: 'rgba(0,0,0,0.8)',

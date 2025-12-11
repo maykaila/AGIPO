@@ -8,10 +8,11 @@ import {
   StyleSheet,
   TextInput,
   Modal,
-  SafeAreaView,
   Dimensions,
   ActivityIndicator
 } from 'react-native';
+// 1. Import AsyncStorage
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { fetchPokemonList, PokemonDetail } from '../api/pokeAPI';
 
 const { width } = Dimensions.get('window');
@@ -27,10 +28,35 @@ export default function PokedexScreen({ navigation }: any) {
 
   useEffect(() => {
     const loadData = async () => {
-      const data = await fetchPokemonList();
-      setPokemonList(data);
-      setLoading(false);
+      // 2. Try to load cached data FIRST (Offline Support)
+      try {
+        const cachedData = await AsyncStorage.getItem('POKEMON_CACHE');
+        if (cachedData) {
+          const parsedData = JSON.parse(cachedData);
+          setPokemonList(parsedData);
+          setLoading(false); // Show cached content immediately
+          console.log('Loaded from Cache');
+        }
+      } catch (error) {
+        console.error('Failed to load cache', error);
+      }
+
+      // 3. Fetch fresh data from API (Online Support)
+      try {
+        const data = await fetchPokemonList();
+        if (data && data.length > 0) {
+          setPokemonList(data);
+          setLoading(false);
+          // 4. Save fresh data to storage for next time
+          await AsyncStorage.setItem('POKEMON_CACHE', JSON.stringify(data));
+          console.log('Cache Updated');
+        }
+      } catch (error) {
+        console.error('Network request failed, using cache if available.');
+        setLoading(false); // Stop spinner even if API fails
+      }
     };
+
     loadData();
   }, []);
 
@@ -60,7 +86,6 @@ export default function PokedexScreen({ navigation }: any) {
             <Text style={styles.idText}>{formattedId}</Text>
             <Image source={{ uri: item.spriteUrl }} style={styles.sprite} />
         </View>
-        {/* Using Retro Font for Name */}
         <Text style={styles.nameText} numberOfLines={1}>{item.name}</Text>
       </TouchableOpacity>
     );
@@ -70,7 +95,7 @@ export default function PokedexScreen({ navigation }: any) {
     return (
       <View style={[styles.container, styles.center]}>
         <ActivityIndicator size="large" color="#8B2323" />
-        <Text style={{color: 'white', marginTop: 10}}>Loading Pokedex...</Text>
+        <Text style={{color: 'white', marginTop: 10, fontFamily: 'PokemonClassic'}}>Loading Pokedex...</Text>
       </View>
     );
   }
@@ -171,7 +196,7 @@ const styles = StyleSheet.create({
     paddingTop: 5, 
   },
   headerTitle: {
-    fontFamily: 'PokemonClassic', // RETRO
+    fontFamily: 'PokemonClassic', 
     fontSize: 20,
     color: 'white',
     marginBottom: 16,
@@ -234,7 +259,7 @@ const styles = StyleSheet.create({
     borderColor: '#eee',
   },
   idText: {
-    fontFamily: 'PokemonClassic', // RETRO
+    fontFamily: 'PokemonClassic',
     position: 'absolute',
     top: 6,
     right: 8,
@@ -247,8 +272,8 @@ const styles = StyleSheet.create({
     resizeMode: 'contain',
   },
   nameText: {
-    fontFamily: 'PokemonClassic', // RETRO
-    fontSize: 8, // Smaller font for retro look
+    fontFamily: 'PokemonClassic', 
+    fontSize: 8,
     color: '#fff',
     textTransform: 'capitalize',
     marginTop: 4,
@@ -267,7 +292,7 @@ const styles = StyleSheet.create({
     elevation: 5,
   },
   modalTitle: {
-    fontFamily: 'PokemonClassic', // RETRO
+    fontFamily: 'PokemonClassic',
     fontSize: 12,
     marginBottom: 16,
     color: 'white',
@@ -297,7 +322,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#8B2323',
   },
   radioLabel: {
-    fontFamily: 'PokemonClassic', // RETRO
+    fontFamily: 'PokemonClassic',
     fontSize: 10,
     color: '#fff',
   }
