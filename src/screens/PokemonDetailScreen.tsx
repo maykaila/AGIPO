@@ -8,7 +8,8 @@ import {
   ActivityIndicator,
   TouchableOpacity,
   Dimensions,
-  SafeAreaView
+  SafeAreaView,
+  Platform
 } from 'react-native';
 import { fetchPokemonDetail, PokemonDetail } from '../api/pokeAPI';
 
@@ -62,7 +63,7 @@ export default function PokemonDetailScreen({ route, navigation }: any) {
   if (!pokemon) {
     return (
       <View style={styles.loadingContainer}>
-        <Text style={{color: 'white'}}>Failed to load Pokémon data.</Text>
+        <Text style={{color: 'white', fontFamily: 'PokemonClassic'}}>Failed to load Pokémon data.</Text>
       </View>
     );
   }
@@ -70,12 +71,13 @@ export default function PokemonDetailScreen({ route, navigation }: any) {
   const mainType = pokemon.types[0];
   const backgroundColor = getTypeColor(mainType);
 
+  const highResImage = `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/${pokemon.id}.png`;
+
   return (
     <View style={[styles.container, { backgroundColor }]}>
       <SafeAreaView style={styles.header}>
         <View style={styles.headerTop}>
           <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
-            {/* Using a larger, bolder arrow to match design */}
             <Text style={styles.backText}>←</Text>
           </TouchableOpacity>
           <Text style={styles.headerTitle}>{pokemon.name}</Text>
@@ -84,7 +86,10 @@ export default function PokemonDetailScreen({ route, navigation }: any) {
       </SafeAreaView>
 
       <View style={styles.imageContainer}>
-        <Image source={{ uri: pokemon.spriteUrl }} style={styles.image as any} />
+        <Image 
+          source={{ uri: highResImage }} 
+          style={styles.image} 
+        />
       </View>
 
       <View style={styles.whiteSheet}>
@@ -106,7 +111,6 @@ export default function PokemonDetailScreen({ route, navigation }: any) {
             {/* Weight */}
             <View style={styles.statItem}>
               <View style={styles.statValueContainer}>
-                 {/* You could add a simple scale icon text here like ⚖️ if desired */}
                 <Text style={styles.statValue}>{pokemon.weight / 10} kg</Text>
               </View>
               <Text style={styles.statLabel}>Weight</Text>
@@ -137,7 +141,7 @@ export default function PokemonDetailScreen({ route, navigation }: any) {
             </View>
           </View>
 
-          {/* Flavor Text */}
+          {/* Flavor Text - Keeping default font for readability */}
           {pokemon.speciesData?.flavor_text_entries && (
             <Text style={styles.description}>
                {pokemon.speciesData.flavor_text_entries
@@ -192,7 +196,8 @@ const styles = StyleSheet.create({
   },
   header: {
     paddingHorizontal: 24,
-    paddingTop: 20,
+    // Add extra padding for Android notch if needed
+    paddingTop: Platform.OS === 'android' ? 15 : 20,
     paddingBottom: 10,
   },
   headerTop: {
@@ -207,27 +212,31 @@ const styles = StyleSheet.create({
   backText: {
     fontSize: 32,
     color: 'white',
-    fontWeight: 'bold',
+    // Removed fontWeight: bold
   },
   headerTitle: {
-    fontSize: 28,
+    fontFamily: 'PokemonClassic', // RETRO
+    fontSize: 18, 
     color: 'white',
-    fontWeight: 'bold',
+    // Removed fontWeight: bold
     textTransform: 'capitalize',
-    position: 'absolute', // Absolute center
+    position: 'absolute', 
     left: 0,
     right: 0,
     textAlign: 'center',
+    marginTop: 10,
   },
   headerId: {
-    fontSize: 18,
+    fontFamily: 'PokemonClassic', // RETRO
+    fontSize: 14,
     color: 'white',
-    fontWeight: 'bold',
+    marginTop: 10,
+    // Removed fontWeight: bold
   },
   imageContainer: {
     alignItems: 'center',
     zIndex: 1,
-    marginBottom: -40, // Overlap effect
+    marginBottom: -40, 
   },
   image: {
     width: 220,
@@ -237,8 +246,8 @@ const styles = StyleSheet.create({
   whiteSheet: {
     flex: 1,
     backgroundColor: 'white',
-    borderRadius: 8, // Slightly less rounded than before to match "card" look
-    marginHorizontal: 4, // Slight margin on sides like a card
+    borderRadius: 8, 
+    marginHorizontal: 4, 
     borderTopLeftRadius: 30,
     borderTopRightRadius: 30,
     paddingTop: 20,
@@ -260,16 +269,18 @@ const styles = StyleSheet.create({
     marginHorizontal: 8,
   },
   typeText: {
+    fontFamily: 'PokemonClassic', // RETRO
     color: 'white',
-    fontWeight: '700',
-    fontSize: 12,
+    fontSize: 10,
     textTransform: 'capitalize',
+    // Removed fontWeight
   },
   sectionTitle: {
-    fontSize: 16,
-    fontWeight: 'bold',
+    fontFamily: 'PokemonClassic', // RETRO
+    fontSize: 14,
     textAlign: 'center',
     marginVertical: 16,
+    // Removed fontWeight
   },
   statsRow: {
     flexDirection: 'row',
@@ -293,17 +304,20 @@ const styles = StyleSheet.create({
     marginBottom: 6,
   },
   statValue: {
-    fontSize: 14,
+    fontFamily: 'PokemonClassic', // RETRO
+    fontSize: 10,
     color: '#1D1D1D',
   },
   statValueSmall: {
-    fontSize: 12,
+    fontFamily: 'PokemonClassic', // RETRO
+    fontSize: 8,
     color: '#1D1D1D',
     textTransform: 'capitalize',
     lineHeight: 16,
   },
   statLabel: {
-    fontSize: 10,
+    fontFamily: 'PokemonClassic', // RETRO
+    fontSize: 8,
     color: '#666',
   },
   statDivider: {
@@ -325,25 +339,26 @@ const styles = StyleSheet.create({
     marginBottom: 10,
   },
   statName: {
-    width: 40,
-    fontSize: 12,
-    fontWeight: 'bold',
-    // color will be set inline
+    fontFamily: 'PokemonClassic', // RETRO
+    width: 60, // Increased width for wider font
+    fontSize: 8,
+    // Removed fontWeight
     borderRightWidth: 1,
     borderColor: '#E0E0E0',
     marginRight: 10,
   },
   statNumber: {
-    width: 30,
-    fontSize: 12,
+    fontFamily: 'PokemonClassic', // RETRO
+    width: 35,
+    fontSize: 8,
     color: '#1D1D1D',
     marginRight: 10,
     textAlign: 'right',
   },
   barContainer: {
     flex: 1,
-    height: 4, // Thinner bar
-    backgroundColor: '#f0f0f0', // Very light grey background
+    height: 4, 
+    backgroundColor: '#f0f0f0', 
     borderRadius: 2,
     overflow: 'hidden',
   },

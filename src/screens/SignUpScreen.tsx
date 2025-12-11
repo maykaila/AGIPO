@@ -6,21 +6,23 @@ import {
   TouchableOpacity,
   StyleSheet,
   Alert,
-  Image,
   ScrollView,
   SafeAreaView,
+  StatusBar,
 } from 'react-native';
 import { signUpWithEmail } from '../api/authService';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import PokeballLogo from '../images/pokeball.svg'; 
+import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
 
-// We get the navigation prop from the RootNavigator
 type SignUpScreenProps = NativeStackScreenProps<any, 'SignUp'>;
 
 const SignUpScreen = ({ navigation }: SignUpScreenProps) => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState(''); 
   const [loading, setLoading] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
 
   const handleError = (error: any) => {
     setLoading(false);
@@ -29,10 +31,14 @@ const SignUpScreen = ({ navigation }: SignUpScreenProps) => {
   };
 
   const handleSignUp = async () => {
+    if (password !== confirmPassword) {
+        Alert.alert('Error', 'Passwords do not match!');
+        return;
+    }
+
     setLoading(true);
     try {
       await signUpWithEmail(email, password);
-      // On success, the RootNavigator will automatically handle the screen change
     } catch (error: any) {
       handleError(error);
     }
@@ -41,105 +47,160 @@ const SignUpScreen = ({ navigation }: SignUpScreenProps) => {
 
   return (
     <SafeAreaView style={styles.safeArea}>
+      <StatusBar barStyle="light-content" backgroundColor="#373737" />
       <ScrollView contentContainerStyle={styles.container}>
-        <PokeballLogo width={150} height={150} style={styles.logo} />
-        <Text style={styles.title}>Create Account</Text>
+        
+        <View style={styles.logoContainer}>
+            <PokeballLogo width={100} height={100} />
+            <Text style={styles.title}>Join the Adventure</Text>
+            <Text style={styles.subtitle}>Create your trainer account</Text>
+        </View>
 
-        <TextInput
-          style={styles.input}
-          placeholder="Email"
-          placeholderTextColor="#888"
-          value={email}
-          onChangeText={setEmail}
-          keyboardType="email-address"
-          autoCapitalize="none"
-        />
-        <TextInput
-          style={styles.input}
-          placeholder="Password"
-          placeholderTextColor="#888"
-          value={password}
-          onChangeText={setPassword}
-          secureTextEntry
-        />
+        <View style={styles.inputWrapper}>
+            <MaterialCommunityIcons name="email-outline" size={20} color="#666" style={styles.icon} />
+            <TextInput
+                style={styles.input}
+                placeholder="Email Address"
+                placeholderTextColor="#999"
+                value={email}
+                onChangeText={setEmail}
+                keyboardType="email-address"
+                autoCapitalize="none"
+            />
+        </View>
+
+        <View style={styles.inputWrapper}>
+            <MaterialCommunityIcons name="lock-outline" size={20} color="#666" style={styles.icon} />
+            <TextInput
+                style={styles.input}
+                placeholder="Password"
+                placeholderTextColor="#999"
+                value={password}
+                onChangeText={setPassword}
+                secureTextEntry={!showPassword}
+            />
+             <TouchableOpacity onPress={() => setShowPassword(!showPassword)}>
+                <MaterialCommunityIcons 
+                    name={showPassword ? "eye-off-outline" : "eye-outline"} 
+                    size={20} 
+                    color="#666" 
+                />
+            </TouchableOpacity>
+        </View>
+        
+        <View style={styles.inputWrapper}>
+            <MaterialCommunityIcons name="lock-check-outline" size={20} color="#666" style={styles.icon} />
+            <TextInput
+                style={styles.input}
+                placeholder="Confirm Password"
+                placeholderTextColor="#999"
+                value={confirmPassword}
+                onChangeText={setConfirmPassword}
+                secureTextEntry={!showPassword}
+            />
+        </View>
 
         <TouchableOpacity
-          style={[styles.button, styles.signUpButton]}
+          style={styles.button}
           onPress={handleSignUp}
           disabled={loading}>
-          <Text style={styles.buttonText}>SIGN UP</Text>
+          <Text style={styles.buttonText}>{loading ? 'CREATING...' : 'SIGN UP'}</Text>
         </TouchableOpacity>
 
-        <TouchableOpacity
-          style={styles.navLinkButton}
-          onPress={() => navigation.goBack()} // Go back to the Login screen
-        >
-          <Text style={styles.navLinkText}>Already have an account? Log In</Text>
-        </TouchableOpacity>
+        <View style={styles.footer}>
+            <Text style={styles.footerText}>Already have an account? </Text>
+            <TouchableOpacity onPress={() => navigation.goBack()}>
+                <Text style={styles.linkText}>Log In</Text>
+            </TouchableOpacity>
+        </View>
+
       </ScrollView>
     </SafeAreaView>
   );
 };
 
-// We can reuse the same styles
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: '#373737ff',
+    backgroundColor: '#373737',
   },
   container: {
     flexGrow: 1,
     justifyContent: 'center',
-    alignItems: 'center',
-    padding: 20,
+    padding: 25,
   },
-  logo: {
-    width: 150,
-    height: 150,
-    marginBottom: 20,
+  logoContainer: {
+    alignItems: 'center',
+    marginBottom: 40,
   },
   title: {
-    fontSize: 32,
-    fontWeight: 'bold',
-    color: '#ffffffff',
-    marginBottom: 30,
+    fontFamily: 'PokemonClassic', // RETRO
+    fontSize: 20,
+    color: '#fff',
+    marginTop: 15,
+    textAlign: 'center',
+    marginBottom: 5,
   },
-  input: {
-    width: '90%',
-    height: 50,
+  subtitle: {
+    fontFamily: 'PokemonClassic', // RETRO
+    fontSize: 10,
+    color: '#ccc',
+    marginTop: 5,
+  },
+  inputWrapper: {
+    flexDirection: 'row',
+    alignItems: 'center',
     backgroundColor: '#fff',
     borderRadius: 8,
-    borderWidth: 1,
+    borderWidth: 2,
     borderColor: '#ddd',
     paddingHorizontal: 15,
+    height: 55,
     marginBottom: 15,
+  },
+  icon: {
+    marginRight: 10,
+  },
+  input: {
+    flex: 1,
     fontSize: 16,
     color: '#333',
+    height: '100%',
   },
   button: {
-    width: '90%',
-    height: 50,
+    width: '100%',
+    height: 55,
     borderRadius: 8,
     justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: 10,
-    marginTop: 20
+    marginBottom: 15,
+    marginTop: 10,
+    backgroundColor: '#e63946',
+    borderWidth: 3,
+    borderColor: '#8B0000',
+    elevation: 3,
   },
   buttonText: {
+    fontFamily: 'PokemonClassic', // RETRO
     color: '#fff',
-    fontSize: 16,
-    fontWeight: 'bold',
+    fontSize: 12,
   },
-  signUpButton: {
-    backgroundColor: '#e63946', // Water Blue
+  footer: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    marginTop: 30,
   },
-  navLinkButton: {
-    marginTop: 20,
+  footerText: {
+    color: '#ccc',
+    fontSize: 14,
   },
-  navLinkText: {
-    fontSize: 16,
-    color: '#c8c8c8ff',
-    fontWeight: '600',
+  linkText: {
+    fontFamily: 'PokemonClassic', // RETRO
+    color: '#fff',
+    fontSize: 10,
+    marginLeft: 5,
+    textDecorationLine: 'underline',
+    marginTop: 2,
   },
 });
 

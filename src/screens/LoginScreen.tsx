@@ -8,16 +8,11 @@ import {
   Alert,
   ScrollView,
   SafeAreaView,
-  // Image is no longer needed for the Logo
+  StatusBar,
 } from 'react-native';
-
-// 1. Import the SVG as a component
 import PokeballLogo from '../images/pokeball.svg'; 
-
-import {
-  signInWithEmail,
-  signInWithGoogle,
-} from '../api/authService';
+import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
+import { signInWithEmail, signInWithGoogle } from '../api/authService';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 
 type LoginScreenProps = NativeStackScreenProps<any, 'Login'>;
@@ -26,6 +21,7 @@ const LoginScreen = ({ navigation }: LoginScreenProps) => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
 
   const handleError = (error: any) => {
     setLoading(false);
@@ -55,54 +51,75 @@ const LoginScreen = ({ navigation }: LoginScreenProps) => {
 
   return (
     <SafeAreaView style={styles.safeArea}>
+      <StatusBar barStyle="light-content" backgroundColor="#373737" />
       <ScrollView contentContainerStyle={styles.container}>
         
-        {/* 2. Use the SVG component directly */}
-        <PokeballLogo width={150} height={150} style={styles.logo} />
-        
-        <Text style={styles.title}>Pokedex</Text>
+        <View style={styles.logoContainer}>
+            <PokeballLogo width={100} height={100} />
+            <Text style={styles.title}>Welcome Back!</Text>
+            <Text style={styles.subtitle}>Sign in to continue</Text>
+        </View>
 
-        <TextInput
-          style={styles.input}
-          placeholder="Email"
-          placeholderTextColor="#888"
-          value={email}
-          onChangeText={setEmail}
-          keyboardType="email-address"
-          autoCapitalize="none"
-        />
-        <TextInput
-          style={styles.input}
-          placeholder="Password"
-          placeholderTextColor="#888"
-          value={password}
-          onChangeText={setPassword}
-          secureTextEntry
-        />
+        <View style={styles.inputWrapper}>
+            <MaterialCommunityIcons name="email-outline" size={20} color="#666" style={styles.icon} />
+            <TextInput
+            style={styles.input}
+            placeholder="Email Address"
+            placeholderTextColor="#999"
+            value={email}
+            onChangeText={setEmail}
+            keyboardType="email-address"
+            autoCapitalize="none"
+            />
+        </View>
+
+        <View style={styles.inputWrapper}>
+            <MaterialCommunityIcons name="lock-outline" size={20} color="#666" style={styles.icon} />
+            <TextInput
+            style={styles.input}
+            placeholder="Password"
+            placeholderTextColor="#999"
+            value={password}
+            onChangeText={setPassword}
+            secureTextEntry={!showPassword}
+            />
+            <TouchableOpacity onPress={() => setShowPassword(!showPassword)}>
+                <MaterialCommunityIcons 
+                    name={showPassword ? "eye-off-outline" : "eye-outline"} 
+                    size={20} 
+                    color="#666" 
+                />
+            </TouchableOpacity>
+        </View>
 
         <TouchableOpacity
           style={styles.button}
           onPress={handleLogin}
           disabled={loading}
         >
-          <Text style={styles.buttonText}>LOG IN</Text>
+          <Text style={styles.buttonText}>{loading ? 'LOGGING IN...' : 'LOG IN'}</Text>
         </TouchableOpacity>
 
-        <View style={styles.divider} />
+        <View style={styles.dividerContainer}>
+            <View style={styles.line} />
+            <Text style={styles.orText}>OR</Text>
+            <View style={styles.line} />
+        </View>
 
         <TouchableOpacity
           style={[styles.button, styles.googleButton]}
           onPress={handleGoogleLogin}
           disabled={loading}>
+          <MaterialCommunityIcons name="google" size={20} color="#fff" style={{marginRight: 10}} />
           <Text style={styles.buttonText}>Sign in with Google</Text>
         </TouchableOpacity>
 
-        <TouchableOpacity
-          style={styles.navLinkButton}
-          onPress={() => navigation.navigate('SignUp')}
-        >
-          <Text style={styles.navLinkText}>Don't have an account? Sign Up</Text>
-        </TouchableOpacity>
+        <View style={styles.footer}>
+            <Text style={styles.footerText}>Don't have an account? </Text>
+            <TouchableOpacity onPress={() => navigation.navigate('SignUp')}>
+                <Text style={styles.linkText}>Sign Up</Text>
+            </TouchableOpacity>
+        </View>
 
       </ScrollView>
     </SafeAreaView>
@@ -112,67 +129,107 @@ const LoginScreen = ({ navigation }: LoginScreenProps) => {
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: '#373737ff',
+    backgroundColor: '#373737',
   },
   container: {
     flexGrow: 1,
     justifyContent: 'center',
-    alignItems: 'center',
-    padding: 20,
+    padding: 25,
   },
-  logo: {
-    // Width and Height are handled by props in the component usually, 
-    // but margin is fine here.
-    marginBottom: 20,
+  logoContainer: {
+    alignItems: 'center',
+    marginBottom: 40,
   },
   title: {
-    fontSize: 32,
-    fontWeight: 'bold',
-    color: '#ffffffff',
-    marginBottom: 30,
+    fontFamily: 'PokemonClassic', // RETRO
+    fontSize: 20,
+    color: '#fff',
+    marginTop: 15,
+    textAlign: 'center',
+    marginBottom: 5,
   },
-  input: {
-    width: '90%',
-    height: 50,
+  subtitle: {
+    fontFamily: 'PokemonClassic', // RETRO
+    fontSize: 10,
+    color: '#ccc',
+    marginTop: 5,
+  },
+  inputWrapper: {
+    flexDirection: 'row',
+    alignItems: 'center',
     backgroundColor: '#fff',
-    borderRadius: 8,
-    borderWidth: 1,
+    borderRadius: 8, // Square corners look more retro
+    borderWidth: 2,
     borderColor: '#ddd',
     paddingHorizontal: 15,
+    height: 55,
     marginBottom: 15,
+  },
+  icon: {
+    marginRight: 10,
+  },
+  input: {
+    flex: 1,
     fontSize: 16,
     color: '#333',
+    height: '100%',
+    // Keep default font for inputs so they are readable
   },
   button: {
-    width: '90%',
-    height: 50,
-    borderRadius: 8,
+    flexDirection: 'row',
+    width: '100%',
+    height: 55,
+    borderRadius: 8, // Retro corners
     justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: 10,
+    marginBottom: 15,
     backgroundColor: '#e63946', 
+    borderWidth: 3,
+    borderColor: '#8B0000',
+    elevation: 3,
   },
   buttonText: {
+    fontFamily: 'PokemonClassic', // RETRO
     color: '#fff',
-    fontSize: 16,
-    fontWeight: 'bold',
+    fontSize: 12,
   },
-  divider: {
-    height: 1,
-    width: '80%',
-    backgroundColor: '#ccc',
+  dividerContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
     marginVertical: 20,
   },
+  line: {
+    flex: 1,
+    height: 1,
+    backgroundColor: '#555',
+  },
+  orText: {
+    fontFamily: 'PokemonClassic', // RETRO
+    fontSize: 10,
+    color: '#888',
+    paddingHorizontal: 10,
+  },
   googleButton: {
-    backgroundColor: '#db4437', 
+    backgroundColor: '#DB4437', 
+    borderColor: '#8B0000',
   },
-  navLinkButton: {
-    marginTop: 20,
+  footer: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    marginTop: 30,
   },
-  navLinkText: {
-    fontSize: 16,
-    color: '#c8c8c8ff',
-    fontWeight: '600',
+  footerText: {
+    // Keep default font for small readable text
+    color: '#ccc',
+    fontSize: 14,
+  },
+  linkText: {
+    fontFamily: 'PokemonClassic', // RETRO
+    color: '#fff',
+    fontSize: 10,
+    marginLeft: 5,
+    textDecorationLine: 'underline',
+    marginTop: 2,
   },
 });
 

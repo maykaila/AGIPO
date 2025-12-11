@@ -4,21 +4,28 @@ import {
   Text,
   StyleSheet,
   TouchableOpacity,
-  SafeAreaView,
-  Alert,
-  ActivityIndicator,
   Modal,
   TextInput,
   ScrollView,
   Image,
-  Platform,   // <--- 1. Import Platform
-  StatusBar,  // <--- 2. Import StatusBar
+  Platform,   
+  StatusBar, 
+  ActivityIndicator,
+  Alert,
+  Dimensions
 } from 'react-native';
 import auth from '@react-native-firebase/auth';
 import database from '@react-native-firebase/database';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
 import { launchImageLibrary, ImageLibraryOptions } from 'react-native-image-picker'; 
 import { signOutUser } from '../api/authService';
+
+// --- GRID MATH ---
+const { width } = Dimensions.get('window');
+const CONTAINER_PADDING = 25; 
+// We want 3 items per row. The available space is width - (padding * 2).
+// Let's leave a small gap between items (approx 2% of screen).
+const ITEM_WIDTH = (width - (CONTAINER_PADDING * 2) - 20) / 3; 
 
 type UserProfile = {
   email: string;
@@ -29,9 +36,17 @@ type UserProfile = {
   discoveredPokemon: { [key: string]: any };
 };
 
+type PokemonCapture = {
+  id: number;
+  name: string;
+  imageUrl: string;
+  capturedAt: string;
+};
+
 const ProfileScreen = () => {
   const [loading, setLoading] = useState(true);
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
+  const [recentCaptures, setRecentCaptures] = useState<PokemonCapture[]>([]);
   
   const [editModalVisible, setEditModalVisible] = useState(false);
   const [newName, setNewName] = useState('');
@@ -48,14 +63,27 @@ const ProfileScreen = () => {
     const userRef = database().ref(`/users/${currentUser.uid}`);
     const onValueChange = userRef.on('value', snapshot => {
       const profileData = snapshot.val();
-      setUserProfile(profileData);
+      
+      if (profileData) {
+        setUserProfile(profileData);
+
+        if (profileData.discoveredPokemon) {
+          const capturesArray: PokemonCapture[] = Object.values(profileData.discoveredPokemon);
+          // Sort by newest
+          capturesArray.sort((a, b) => {
+            return new Date(b.capturedAt).getTime() - new Date(a.capturedAt).getTime();
+          });
+          setRecentCaptures(capturesArray);
+        } else {
+          setRecentCaptures([]);
+        }
+      }
+      
       setLoading(false);
     });
 
     return () => userRef.off('value', onValueChange);
   }, [currentUser]);
-
-  // --- ACTIONS ---
 
   const handleSignOut = async () => {
     setMenuVisible(false);
@@ -102,9 +130,8 @@ const ProfileScreen = () => {
     };
 
     launchImageLibrary(options, async (response) => {
-      if (response.didCancel) {
-        return;
-      } else if (response.errorCode) {
+      if (response.didCancel) return;
+      if (response.errorCode) {
         Alert.alert('Error', 'Image picker error: ' + response.errorMessage);
         return;
       }
@@ -120,7 +147,6 @@ const ProfileScreen = () => {
             });
             Alert.alert('Success', 'Profile picture updated!');
           } catch (error) {
-            console.error(error);
             Alert.alert('Error', 'Could not save image.');
           }
         }
@@ -136,67 +162,95 @@ const ProfileScreen = () => {
     );
   }
 
-  const discoveredCount = userProfile?.discoveredPokemon
-    ? Object.keys(userProfile.discoveredPokemon).length
-    : 0;
-  
-  const badgePlaceholders = Array(8).fill(0);
+  const discoveredCount = recentCaptures.length;
+
+  // --- NEW: CALCULATE RANK LOGIC ---
+  // Rank starts at 1, and increases by 1 for every 5 Pokemon caught.
+  const numericRank = Math.floor(discoveredCount / 5) + 1;
+  // Format it to look like "001", "005", "012"
+  const formattedRank = String(numericRank).padStart(3, '0');
 
   return (
-    // 3. Changed SafeAreaView to normal View so background color bleeds to top
     <View style={styles.container}>
       <ScrollView contentContainerStyle={styles.scrollContainer}>
         
-        {/* --- HEADER SECTION --- */}
-        <View style={styles.headerContainer}>
-          
-          <TouchableOpacity 
-            style={styles.menuIcon} 
-            onPress={() => setMenuVisible(true)}
-          >
-             <MaterialCommunityIcons name="dots-horizontal" size={30} color="#fff" />
-          </TouchableOpacity>
+        {/* --- TRAINER CARD HEADER --- */}
+        <View style={styles.headerBackground}>
+          <View style={styles.headerCard}>
+            
+            {/* ... (Menu Icon & Profile Picture code remains same) ... */}
+            <TouchableOpacity 
+              style={styles.menuIcon} 
+              onPress={() => setMenuVisible(true)}
+            >
+               <MaterialCommunityIcons name="dots-horizontal" size={24} color="#fff" />
+            </TouchableOpacity>
 
-          {/* Profile Picture Circle */}
-          <TouchableOpacity onPress={handleUpdateProfilePicture}>
-            {userProfile?.profilePicture ? (
-              <Image 
-                source={{ uri: userProfile.profilePicture }} 
-                style={styles.profileImage} 
-              />
-            ) : (
-              <View style={styles.profilePlaceholder}>
-                 <MaterialCommunityIcons name="camera" size={40} color="#999" />
-              </View>
-            )}
-          </TouchableOpacity>
+            <TouchableOpacity onPress={handleUpdateProfilePicture}>
+              {userProfile?.profilePicture ? (
+                <Image 
+                  source={{ uri: userProfile.profilePicture }} 
+                  style={styles.profileImage} 
+                />
+              ) : (
+                <View style={styles.profilePlaceholder}>
+                   <MaterialCommunityIcons name="camera" size={30} color="#555" />
+                </View>
+              )}
+            </TouchableOpacity>
 
-          <Text style={styles.trainerName}>
-            {userProfile?.trainerName || 'Trainer'}
-          </Text>
-          
-          <Text style={styles.trainerEmail}>{currentUser?.email}</Text>
+            <Text style={styles.trainerName}>
+              {userProfile?.trainerName || 'Trainer'}
+            </Text>
+            
+            <Text style={styles.trainerEmail}>{currentUser?.email}</Text>
+
+            <View style={styles.statsContainer}>
+               <View style={styles.statBox}>
+                  <Text style={styles.statValue}>{discoveredCount}</Text>
+                  <Text style={styles.statLabel}>CAUGHT</Text>
+               </View>
+               <View style={styles.statDivider} />
+               <View style={styles.statBox}>
+                  {/* UPDATED: Use the calculated formattedRank variable here */}
+                  <Text style={styles.statValue}>{formattedRank}</Text>
+                  <Text style={styles.statLabel}>RANK</Text>
+               </View>
+            </View>
+          </View>
         </View>
 
-        {/* --- CONTENT SECTION --- */}
+        {/* ... (Rest of the file remains exactly the same) ... */}
+        
         <View style={styles.contentContainer}>
+          <Text style={styles.sectionTitle}>Recent Captures</Text>
           
-          <View style={styles.statsRow}>
-            <Text style={styles.statsLabel}>Pokemon Discovered</Text>
-            <Text style={styles.statsValue}>{discoveredCount}</Text>
-          </View>
-          <View style={styles.divider} />
-
-          <Text style={styles.sectionTitle}>Badges</Text>
-          <View style={styles.badgeGrid}>
-            {badgePlaceholders.map((_, index) => (
-              <View key={index} style={styles.badgePlaceholder} />
-            ))}
-          </View>
-
+          {recentCaptures.length === 0 ? (
+            <View style={styles.emptyState}>
+              <Text style={styles.emptyText}>No Pokémon captured yet.</Text>
+              <Text style={styles.emptySubText}>Go to Hunt Mode to find some!</Text>
+            </View>
+          ) : (
+            <View style={styles.gridContainer}>
+              {/* SLICE(0, 9) ensures exactly 3x3 max */}
+              {recentCaptures.slice(0, 9).map((pokemon) => (
+                <View key={pokemon.capturedAt} style={styles.gridItem}>
+                  <View style={styles.gridImageContainer}>
+                    <Image source={{ uri: pokemon.imageUrl }} style={styles.gridImage} />
+                  </View>
+                  <Text style={styles.gridName} numberOfLines={1}>{pokemon.name}</Text>
+                </View>
+              ))}
+              
+              {/* Fillers to keep alignment if less than 3 in last row */}
+              {[...Array(3 - (recentCaptures.slice(0,9).length % 3 || 3))].map((_, i) => (
+                 <View key={`filler-${i}`} style={[styles.gridItem, {opacity: 0}]} />
+              ))}
+            </View>
+          )}
         </View>
 
-        {/* --- 1. POPUP MENU MODAL --- */}
+        {/* --- MODALS --- */}
         <Modal
           animationType="fade"
           transparent={true}
@@ -212,9 +266,7 @@ const ProfileScreen = () => {
               <TouchableOpacity style={styles.menuItem} onPress={openEditModal}>
                 <Text style={styles.menuText}>Edit name</Text>
               </TouchableOpacity>
-              
               <View style={styles.menuSeparator} />
-              
               <TouchableOpacity style={styles.menuItem} onPress={handleSignOut}>
                 <Text style={styles.menuText}>Sign out</Text>
               </TouchableOpacity>
@@ -222,8 +274,6 @@ const ProfileScreen = () => {
           </TouchableOpacity>
         </Modal>
 
-
-        {/* --- 2. EDIT NAME INPUT MODAL --- */}
         <Modal
           animationType="slide"
           transparent={true}
@@ -271,6 +321,7 @@ const styles = StyleSheet.create({
   },
   scrollContainer: {
     flexGrow: 1,
+    paddingBottom: 40,
   },
   loadingContainer: {
     flex: 1,
@@ -278,96 +329,150 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     backgroundColor: '#333333',
   },
-  headerContainer: {
+  headerBackground: {
     backgroundColor: '#8B2323',
-    // --- 4. RESPONSIVE HEADER FIX ---
-    // Push content down based on StatusBar height
-    paddingTop: Platform.OS === 'android' ? (StatusBar.currentHeight || 0) + 20 : 60,
-    paddingBottom: 40, 
-    paddingHorizontal: 20,
-    borderBottomLeftRadius: 30,
-    borderBottomRightRadius: 30,
+    paddingTop: Platform.OS === 'android' ? (StatusBar.currentHeight || 0) + 10 : 50,
+    paddingBottom: 30, 
+    borderBottomLeftRadius: 40,
+    borderBottomRightRadius: 40,
+    alignItems: 'center',
+    marginBottom: 20,
+  },
+  headerCard: {
+    width: '85%',
     alignItems: 'center',
     position: 'relative',
   },
   menuIcon: {
     position: 'absolute',
-    // Adjust top position to account for the new padding
-    top: 20,//Platform.OS === 'android' ? (StatusBar.currentHeight || 0) + 20 : 60,
-    right: 20,
+    top: 0,
+    right: 0,
     zIndex: 10, 
     padding: 5, 
   },
   profileImage: {
-    width: 100,
-    height: 100,
-    borderRadius: 50,
-    marginBottom: 15,
-    borderWidth: 3,
+    width: 90,
+    height: 90,
+    borderRadius: 45,
+    marginBottom: 10,
+    borderWidth: 4,
     borderColor: '#fff',
   },
   profilePlaceholder: {
-    width: 100,
-    height: 100,
-    borderRadius: 50,
-    backgroundColor: '#C4C4C4', 
-    marginBottom: 15,
+    width: 90,
+    height: 90,
+    borderRadius: 45,
+    backgroundColor: '#ccc', 
+    marginBottom: 10,
     justifyContent: 'center',
     alignItems: 'center',
-    borderWidth: 3,
+    borderWidth: 4,
     borderColor: '#fff', 
   },
   trainerName: {
-    fontSize: 24,
-    fontWeight: 'bold',
+    fontFamily: 'PokemonClassic',
+    fontSize: 16, 
     color: '#ffffff',
-    marginBottom: 5,
+    marginBottom: 4,
+    marginTop: 5,
+    textShadowColor: 'rgba(0, 0, 0, 0.3)',
+    textShadowOffset: {width: 1, height: 1},
+    textShadowRadius: 2,
   },
   trainerEmail: {
+    fontSize: 12, 
+    color: '#ffdddd',
+    marginBottom: 15,
+  },
+  statsContainer: {
+    flexDirection: 'row',
+    backgroundColor: 'rgba(0,0,0,0.2)',
+    borderRadius: 15,
+    paddingVertical: 10,
+    paddingHorizontal: 20,
+    width: '100%',
+    justifyContent: 'space-around',
+    alignItems: 'center',
+  },
+  statBox: {
+    alignItems: 'center',
+  },
+  statValue: {
+    fontFamily: 'PokemonClassic',
     fontSize: 14,
-    color: '#e0e0e0',
+    color: '#fff',
+    marginBottom: 2,
+  },
+  statLabel: {
+    fontSize: 10,
+    color: '#ffdddd',
+    fontWeight: 'bold',
+  },
+  statDivider: {
+    width: 1,
+    height: 25,
+    backgroundColor: 'rgba(255,255,255,0.3)',
   },
   contentContainer: {
-    padding: 25,
-  },
-  statsRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 15,
-  },
-  statsLabel: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: '#ffffff',
-  },
-  statsValue: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    color: '#ffffff',
-  },
-  divider: {
-    height: 1,
-    backgroundColor: '#555555',
-    marginBottom: 25,
+    paddingHorizontal: CONTAINER_PADDING,
   },
   sectionTitle: {
-    fontSize: 20,
-    fontWeight: 'bold',
+    fontFamily: 'PokemonClassic',
+    fontSize: 14,
     color: '#ffffff',
-    marginBottom: 20,
+    marginBottom: 15,
+    marginLeft: 5,
   },
-  badgeGrid: {
+  // --- GRID STYLES ---
+  gridContainer: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    justifyContent: 'space-between',
+    justifyContent: 'space-between', 
   },
-  badgePlaceholder: {
-    width: '22%',
-    aspectRatio: 1,
-    backgroundColor: '#C4C4C4',
+  gridItem: {
+    width: ITEM_WIDTH,
+    marginBottom: 20,
+    alignItems: 'center',
+  },
+  gridImageContainer: {
+    width: ITEM_WIDTH,
+    height: ITEM_WIDTH,
+    backgroundColor: '#444',
     borderRadius: 12,
-    marginBottom: 15,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 2,
+    borderColor: '#555',
+    marginBottom: 8,
+  },
+  gridImage: {
+    width: '80%',
+    height: '80%',
+    resizeMode: 'contain',
+  },
+  gridName: {
+    color: '#ccc',
+    fontSize: 10,
+    fontFamily: 'PokemonClassic',
+    textAlign: 'center',
+    width: '100%',
+  },
+  emptyState: {
+    alignItems: 'center',
+    marginTop: 20,
+    padding: 20,
+    backgroundColor: '#444',
+    borderRadius: 12,
+  },
+  emptyText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: 'bold',
+    marginBottom: 5,
+  },
+  emptySubText: {
+    color: '#aaa',
+    fontSize: 14,
   },
   menuOverlay: {
     flex: 1,
@@ -375,30 +480,24 @@ const styles = StyleSheet.create({
   },
   menuContainer: {
     position: 'absolute',
-    // Push the menu down so it appears below the dots
-    top: Platform.OS === 'android' ? (StatusBar.currentHeight || 0) + 15 : 70,
-    right: 20,
+    top: Platform.OS === 'android' ? (StatusBar.currentHeight || 0) + 40 : 90,
+    right: 30,
     backgroundColor: '#444', 
     borderRadius: 8,
-    width: 150,
-    shadowColor: "#000",
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
-    shadowOpacity: 0.25,
-    shadowRadius: 3.84,
-    elevation: 5,
+    width: 140,
+    elevation: 10,
+    borderWidth: 1,
+    borderColor: '#555',
   },
   menuItem: {
-    paddingVertical: 15,
-    paddingHorizontal: 20,
+    paddingVertical: 12,
+    paddingHorizontal: 15,
     alignItems: 'center',
   },
   menuText: {
+    fontFamily: 'PokemonClassic',
     color: '#fff',
-    fontSize: 16,
-    fontWeight: '600',
+    fontSize: 10,
   },
   menuSeparator: {
     height: 1,
@@ -407,7 +506,7 @@ const styles = StyleSheet.create({
   },
   modalOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.5)',
+    backgroundColor: 'rgba(0,0,0,0.7)',
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -419,8 +518,8 @@ const styles = StyleSheet.create({
     elevation: 5,
   },
   modalTitle: {
-    fontSize: 22,
-    fontWeight: 'bold',
+    fontFamily: 'PokemonClassic',
+    fontSize: 12,
     marginBottom: 20,
     color: '#333',
     textAlign: 'center',
@@ -452,9 +551,9 @@ const styles = StyleSheet.create({
     backgroundColor: '#e63946',
   },
   btnText: {
+    fontFamily: 'PokemonClassic',
     color: '#fff',
-    fontWeight: 'bold',
-    fontSize: 16,
+    fontSize: 10,
   },
 });
 

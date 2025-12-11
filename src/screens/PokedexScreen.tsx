@@ -14,12 +14,10 @@ import {
 } from 'react-native';
 import { fetchPokemonList, PokemonDetail } from '../api/pokeAPI';
 
-// Get screen width to calculate card size dynamically
 const { width } = Dimensions.get('window');
-const CARD_WIDTH = (width - 48) / 3; // 48 = padding (16 left + 16 right + space between)
+const CARD_WIDTH = (width - 48) / 3; 
 
 export default function PokedexScreen({ navigation }: any) {
-  // 2. Add State for the real list
   const [pokemonList, setPokemonList] = useState<PokemonDetail[]>([]);
   const [loading, setLoading] = useState(true);
   
@@ -27,7 +25,6 @@ export default function PokedexScreen({ navigation }: any) {
   const [sortOption, setSortOption] = useState<'number' | 'name'>('number');
   const [isSortModalVisible, setSortModalVisible] = useState(false);
 
-  // 3. Fetch Data on Mount
   useEffect(() => {
     const loadData = async () => {
       const data = await fetchPokemonList();
@@ -37,7 +34,6 @@ export default function PokedexScreen({ navigation }: any) {
     loadData();
   }, []);
 
-  // 4. FILTER Logic (Updated to use pokemonList state)
   const filteredData = pokemonList.filter((pokemon) => {
     const searchLower = searchText.toLowerCase();
     const matchesName = pokemon.name.toLowerCase().includes(searchLower);
@@ -45,7 +41,6 @@ export default function PokedexScreen({ navigation }: any) {
     return matchesName || matchesId;
   });
 
-  // 5. SORT Logic
   const sortedData = [...filteredData].sort((a, b) => {
     if (sortOption === 'name') {
       return a.name.localeCompare(b.name);
@@ -53,7 +48,6 @@ export default function PokedexScreen({ navigation }: any) {
     return a.id - b.id;
   });
 
-  // 6. RENDER ITEM
   const renderCard = ({ item }: { item: PokemonDetail }) => {
     const formattedId = `#${item.id.toString().padStart(3, '0')}`;
 
@@ -66,12 +60,12 @@ export default function PokedexScreen({ navigation }: any) {
             <Text style={styles.idText}>{formattedId}</Text>
             <Image source={{ uri: item.spriteUrl }} style={styles.sprite} />
         </View>
+        {/* Using Retro Font for Name */}
         <Text style={styles.nameText} numberOfLines={1}>{item.name}</Text>
       </TouchableOpacity>
     );
   };
 
-  // Loading View
   if (loading) {
     return (
       <View style={[styles.container, styles.center]}>
@@ -83,7 +77,6 @@ export default function PokedexScreen({ navigation }: any) {
 
   return (
     <View style={styles.container}>
-      {/* HEADER SECTION */}
       <View style={styles.header}>
           <Text style={styles.headerTitle}>Pokédex</Text>
           <View style={styles.searchContainer}>
@@ -103,7 +96,6 @@ export default function PokedexScreen({ navigation }: any) {
               )}
             </View>
             
-            {/* Sort Button */}
             <TouchableOpacity 
               style={styles.sortButton} 
               onPress={() => setSortModalVisible(true)}
@@ -113,7 +105,6 @@ export default function PokedexScreen({ navigation }: any) {
           </View>
       </View>
 
-      {/* GRID CONTENT */}
       <FlatList
         data={sortedData}
         keyExtractor={(item) => item.id.toString()}
@@ -124,7 +115,6 @@ export default function PokedexScreen({ navigation }: any) {
         showsVerticalScrollIndicator={false}
       />
 
-      {/* SORT MODAL */}
       <Modal
         visible={isSortModalVisible}
         transparent={true}
@@ -168,29 +158,25 @@ export default function PokedexScreen({ navigation }: any) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#333333', // Your dark mode background
+    backgroundColor: '#333333', 
   },
   center: {
     justifyContent: 'center',
     alignItems: 'center',
   },
-  // --- HEADER STYLES ---
   header: {
     backgroundColor: '#8B2323', 
     paddingHorizontal: 16,
     paddingBottom: 16,
-    paddingTop: 20, 
-  },
-  headerContent: {
-    // Wrapper ensuring full width
-    width: '100%',
+    paddingTop: 5, 
   },
   headerTitle: {
-    fontSize: 24,
-    fontWeight: 'bold',
+    fontFamily: 'PokemonClassic', // RETRO
+    fontSize: 20,
     color: 'white',
     marginBottom: 16,
     marginLeft: 4,
+    marginTop: 10,
   },
   searchContainer: {
     flexDirection: 'row',
@@ -225,8 +211,6 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     color: '#8B2323',
   },
-  
-  // --- LIST STYLES ---
   listContent: {
     padding: 12,
   },
@@ -234,8 +218,6 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     marginBottom: 12,
   },
-  
-  // --- CARD STYLES ---
   card: {
     width: CARD_WIDTH,
     alignItems: 'center',
@@ -243,7 +225,7 @@ const styles = StyleSheet.create({
   cardInner: {
     width: '100%',
     aspectRatio: 1, 
-    backgroundColor: '#333333', // Dark card background
+    backgroundColor: '#333333', 
     borderRadius: 12,
     padding: 8,
     position: 'relative',
@@ -252,10 +234,11 @@ const styles = StyleSheet.create({
     borderColor: '#eee',
   },
   idText: {
+    fontFamily: 'PokemonClassic', // RETRO
     position: 'absolute',
     top: 6,
     right: 8,
-    fontSize: 10,
+    fontSize: 8,
     color: '#fff',
   },
   sprite: {
@@ -264,12 +247,12 @@ const styles = StyleSheet.create({
     resizeMode: 'contain',
   },
   nameText: {
-    fontSize: 12,
+    fontFamily: 'PokemonClassic', // RETRO
+    fontSize: 8, // Smaller font for retro look
     color: '#fff',
     textTransform: 'capitalize',
+    marginTop: 4,
   },
-
-  // --- MODAL STYLES ---
   modalOverlay: {
     flex: 1,
     backgroundColor: 'rgba(0,0,0,0.5)',
@@ -278,14 +261,14 @@ const styles = StyleSheet.create({
   },
   modalContent: {
     width: 200,
-    backgroundColor: '#3d3d3dff', // Dark modal
+    backgroundColor: '#3d3d3dff', 
     borderRadius: 12,
     padding: 20,
     elevation: 5,
   },
   modalTitle: {
-    fontSize: 16,
-    fontWeight: 'bold',
+    fontFamily: 'PokemonClassic', // RETRO
+    fontSize: 12,
     marginBottom: 16,
     color: 'white',
   },
@@ -314,7 +297,8 @@ const styles = StyleSheet.create({
     backgroundColor: '#8B2323',
   },
   radioLabel: {
-    fontSize: 14,
+    fontFamily: 'PokemonClassic', // RETRO
+    fontSize: 10,
     color: '#fff',
   }
 });
