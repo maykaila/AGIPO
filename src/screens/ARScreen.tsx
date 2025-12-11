@@ -299,7 +299,7 @@ const ARScreen = ({ navigation, route }: any) => {
         {spawnedPokemon && !hasFled && (
             <TouchableOpacity 
                 style={styles.detailsBtn}
-                onPress={() => navigation.navigate("PokemonDetail", { pokemonId: spawnedPokemon.id })}
+                onPress={() => navigation.navigate("PokemonDetailScreen", { pokemonId: spawnedPokemon.id })}
             >
                 <Text style={styles.detailsBtnText}>🔍 VIEW DETAILS</Text>
             </TouchableOpacity>
