@@ -14,11 +14,10 @@ import {
 // 1. Import AsyncStorage
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { fetchPokemonList, PokemonDetail } from '../api/pokeAPI';
-// Keep the type import, but we will bypass the function import
-import { PokemonDetail } from '../api/pokeAPI';
+// // Keep the type import, but we will bypass the function import
+// import { PokemonDetail } from '../api/pokeAPI';
 
 const { width } = Dimensions.get('window');
-const CARD_WIDTH = (width - 48) / 3; 
 const CARD_WIDTH = (width - 48) / 3; 
 
 export default function PokedexScreen({ navigation }: any) {
@@ -214,7 +213,6 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#333333', 
-    backgroundColor: '#333333', 
   },
   center: {
     justifyContent: 'center',
@@ -225,17 +223,13 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingBottom: 16,
     paddingTop: 5, 
-    paddingTop: 5, 
   },
   headerTitle: {
     fontFamily: 'PokemonClassic', 
     fontSize: 20,
-    fontFamily: 'PokemonClassic',
-    fontSize: 20,
     color: 'white',
     marginBottom: 16,
     marginLeft: 4,
-    marginTop: 10,
     marginTop: 10,
   },
   searchContainer: {
@@ -285,8 +279,7 @@ const styles = StyleSheet.create({
   cardInner: {
     width: '100%',
     aspectRatio: 1, 
-    backgroundColor: '#333333', 
-    backgroundColor: '#333333', 
+    backgroundColor: '#333333',
     borderRadius: 12,
     padding: 8,
     position: 'relative',
@@ -296,11 +289,9 @@ const styles = StyleSheet.create({
   },
   idText: {
     fontFamily: 'PokemonClassic',
-    fontFamily: 'PokemonClassic',
     position: 'absolute',
     top: 6,
     right: 8,
-    fontSize: 8,
     fontSize: 8,
     color: '#fff',
   },
@@ -312,11 +303,8 @@ const styles = StyleSheet.create({
   nameText: {
     fontFamily: 'PokemonClassic', 
     fontSize: 8,
-    fontFamily: 'PokemonClassic',
-    fontSize: 8,
     color: '#fff',
     textTransform: 'capitalize',
-    marginTop: 4,
     marginTop: 4,
   },
   modalOverlay: {
@@ -328,14 +316,11 @@ const styles = StyleSheet.create({
   modalContent: {
     width: 200,
     backgroundColor: '#3d3d3dff', 
-    backgroundColor: '#3d3d3dff', 
     borderRadius: 12,
     padding: 20,
     elevation: 5,
   },
   modalTitle: {
-    fontFamily: 'PokemonClassic',
-    fontSize: 12,
     fontFamily: 'PokemonClassic',
     fontSize: 12,
     marginBottom: 16,
@@ -366,8 +351,6 @@ const styles = StyleSheet.create({
     backgroundColor: '#8B2323',
   },
   radioLabel: {
-    fontFamily: 'PokemonClassic',
-    fontSize: 10,
     fontFamily: 'PokemonClassic',
     fontSize: 10,
     color: '#fff',
