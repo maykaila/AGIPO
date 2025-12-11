@@ -8,8 +8,8 @@ import {
   Alert,
   ActivityIndicator,
 } from "react-native";
-// 1. FIXED: Import 'useCameraDevice' (singular) instead of plural
-import { Camera, useCameraDevice } from "react-native-vision-camera";
+// Using the singular import as per your code
+import { Camera, useCameraDevice } from "react-native-vision-camera"; 
 import { capturePokemon, PokemonData } from "../api/pokemonService";
 import { fetchPokemonList } from "../api/pokeAPI";
 
@@ -40,7 +40,6 @@ type SpawnedPokemon = PokemonData & {
 const ARScreen = ({ navigation, route }: any) => {
   const { pokemon: targetPokemon } = route.params || {};
 
-  // 2. FIXED: Get the back camera directly
   const device = useCameraDevice('back');
   
   const camera = useRef<Camera>(null);
@@ -50,7 +49,25 @@ const ARScreen = ({ navigation, route }: any) => {
   const [allPokemon, setAllPokemon] = useState<PokemonData[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [caughtPokemonIds, setCaughtPokemonIds] = useState<Set<number>>(new Set());
-  const spawnIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  // State to track if pokemon ran away
+  const [hasFled, setHasFled] = useState(false);
+
+  // 1. FIXED: Changed type from NodeJS.Timeout to 'number' or 'any'
+  // In React Native, setTimeout returns a number ID.
+  const fleeTimeout = useRef<any>(null);
+
+  // Helper to start the 10s countdown
+  const startFleeTimer = () => {
+    // Clear any existing timer first
+    if (fleeTimeout.current) clearTimeout(fleeTimeout.current);
+
+    fleeTimeout.current = setTimeout(() => {
+      // 10 seconds passed!
+      setSpawnedPokemon(null);
+      setHasFled(true); 
+    }, 10000); // 10000ms = 10 seconds
+  };
 
   useEffect(() => {
     (async () => {
@@ -83,6 +100,11 @@ const ARScreen = ({ navigation, route }: any) => {
         Alert.alert("Error", "Could not load Pokémon data");
       }
     })();
+    
+    // Cleanup timer on unmount
+    return () => {
+        if (fleeTimeout.current) clearTimeout(fleeTimeout.current);
+    };
   }, [targetPokemon]);
 
   const loadBackgroundList = async () => {
@@ -108,33 +130,35 @@ const ARScreen = ({ navigation, route }: any) => {
     })();
   }, []);
 
-  useEffect(() => {
-    if (allPokemon.length === 0 || targetPokemon) return;
-    spawnIntervalRef.current = setInterval(() => {
-      spawnRandomPokemon(allPokemon);
-    }, 10000 + Math.random() * 5000);
-    return () => {
-      if (spawnIntervalRef.current) clearInterval(spawnIntervalRef.current);
-    };
-  }, [allPokemon, targetPokemon]);
-
   function spawnSpecificPokemon(p: PokemonData) {
     const isCaught = caughtPokemonIds.has(p.id);
+    setHasFled(false); // Reset flee state
     setSpawnedPokemon({ ...p, spawnedAt: Date.now(), isCaught });
+    
+    // Start the timer unless it's already caught
+    if (!isCaught) startFleeTimer();
   }
 
   function spawnRandomPokemon(pokemonList: PokemonData[]) {
     if (pokemonList.length === 0) return;
     const randomPokemon = pokemonList[Math.floor(Math.random() * pokemonList.length)];
     const isCaught = caughtPokemonIds.has(randomPokemon.id);
+    
+    setHasFled(false); // Reset flee state
     setSpawnedPokemon({ ...randomPokemon, spawnedAt: Date.now(), isCaught });
+    
+    // Start the timer
+    if (!isCaught) startFleeTimer();
   }
 
   async function captureCurrentPokemon() {
+    // Stop the timer immediately when user clicks capture
+    if (fleeTimeout.current) clearTimeout(fleeTimeout.current);
+
     if (!spawnedPokemon) {
-      Alert.alert("No Pokémon", "No Pokémon nearby to capture!");
       return;
     }
+    
     try {
       if (camera.current) {
         await camera.current.takePhoto({ flash: "off" });
@@ -153,18 +177,18 @@ const ARScreen = ({ navigation, route }: any) => {
         const newCaughtIds = new Set(caughtPokemonIds);
         newCaughtIds.add(spawnedPokemon.id);
         setCaughtPokemonIds(newCaughtIds);
-
-        if (!targetPokemon) {
-           setTimeout(() => { spawnRandomPokemon(allPokemon); }, 1500);
-        }
+        
+        // Mark current as caught visually
+        setSpawnedPokemon(prev => prev ? { ...prev, isCaught: true } : null);
       }
     } catch (err) {
       console.error("Capture error:", err);
       Alert.alert("Error", "Failed to capture Pokémon. Try again!");
+      // If failed, restart timer
+      startFleeTimer(); 
     }
   }
 
-  // 3. FIXED: Handle Loading State properly while waiting for device
   if (hasPermission === null || isLoading) {
     return (
       <View style={styles.center}>
@@ -184,13 +208,11 @@ const ARScreen = ({ navigation, route }: any) => {
     );
   }
 
-  // 4. FIXED: Handle "No Camera Device" (e.g. simulator without camera setup)
   if (device == null) {
     return (
       <View style={styles.center}>
          <Text style={{ color: "#fff", textAlign: 'center' }}>
-            Camera device not found. {'\n'}
-            If on simulator, please enable a virtual camera.
+            Camera device not found.
          </Text>
       </View>
     );
@@ -213,7 +235,8 @@ const ARScreen = ({ navigation, route }: any) => {
         <Text style={styles.backButtonText}>← Retreat</Text>
       </TouchableOpacity>
 
-      {spawnedPokemon && (
+      {/* RENDER POKEMON IF IT EXISTS AND HASN'T FLED */}
+      {spawnedPokemon && !hasFled && (
         <View style={styles.pokemonContainer}>
           {spawnedPokemon.isCaught && (
             <View style={styles.caughtBadge}>
@@ -244,13 +267,27 @@ const ARScreen = ({ navigation, route }: any) => {
               </View>
             ))}
           </View>
-
         </View>
       )}
 
+      {/* UI: Handle "Ran Away" state */}
       {!spawnedPokemon && (
         <View style={styles.loadingIndicator}>
-          <Text style={{ color: "#fff", fontSize: 16 }}>Scanning Area...</Text>
+          {hasFled ? (
+             <View style={{ alignItems: 'center' }}>
+                <Text style={{ color: "#FF6B6B", fontSize: 20, fontWeight: 'bold', marginBottom: 10 }}>
+                  It ran away! 💨
+                </Text>
+                <TouchableOpacity 
+                   style={styles.retryBtn} 
+                   onPress={() => spawnRandomPokemon(allPokemon)}
+                >
+                   <Text style={{ color: 'white', fontWeight: 'bold' }}>SEARCH AGAIN ↻</Text>
+                </TouchableOpacity>
+             </View>
+          ) : (
+             <Text style={{ color: "#fff", fontSize: 16 }}>Scanning Area...</Text>
+          )}
         </View>
       )}
 
@@ -258,26 +295,25 @@ const ARScreen = ({ navigation, route }: any) => {
         <TouchableOpacity
           style={[
             styles.captureBtn,
-            !spawnedPokemon && styles.captureDisabled,
+            (!spawnedPokemon || hasFled) && styles.captureDisabled,
             spawnedPokemon?.isCaught && styles.captureCaught,
           ]}
           onPress={() => captureCurrentPokemon()}
-          disabled={!spawnedPokemon || spawnedPokemon?.isCaught}
+          disabled={!spawnedPokemon || hasFled || spawnedPokemon?.isCaught}
         >
           <Text style={{ color: "#fff", fontWeight: "bold", fontSize: 16 }}>
-            {!spawnedPokemon ? "WAITING..." : spawnedPokemon.isCaught ? "ALREADY CAUGHT" : "CAPTURE"}
+            {hasFled ? "MISSED!" : !spawnedPokemon ? "WAITING..." : spawnedPokemon.isCaught ? "ALREADY CAUGHT" : "CAPTURE"}
           </Text>
         </TouchableOpacity>
 
-        {spawnedPokemon && (
+        {spawnedPokemon && !hasFled && (
             <TouchableOpacity 
                 style={styles.detailsBtn}
-                onPress={() => navigation.navigate("PokemonDetailScreen", { pokemonId: spawnedPokemon.id })}
+                onPress={() => navigation.navigate("PokemonDetail", { pokemonId: spawnedPokemon.id })}
             >
                 <Text style={styles.detailsBtnText}>🔍 VIEW DETAILS</Text>
             </TouchableOpacity>
         )}
-
       </View>
     </View>
   );
@@ -345,6 +381,17 @@ const styles = StyleSheet.create({
   },
 
   loadingIndicator: { position: "absolute", top: "45%", left: 0, right: 0, alignItems: "center", zIndex: 10 },
+  
+  retryBtn: {
+    backgroundColor: '#333',
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: '#fff',
+    marginTop: 10
+  },
+
   controls: { position: "absolute", bottom: 30, left: 0, right: 0, justifyContent: "center", alignItems: "center" },
   
   captureBtn: {
